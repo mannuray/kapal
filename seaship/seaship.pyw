@@ -9,6 +9,7 @@ import kapal.state
 import kapal.world
 import kapal.tools
 import copy
+import os
 
 class WorldCanvas(object):
     STATE_OPEN = 0x01
@@ -171,32 +172,42 @@ class World2dSettingsDock(QDockWidget):
         QDockWidget.__init__(self)
 
         # size boxes
-        size_y_box = QtGui.QSpinBox(self)
-        size_y_box.setMinimum(1)
-        size_x_box = QtGui.QSpinBox(self)
-        size_x_box.setMinimum(1)
+        self.size_y_box = QtGui.QSpinBox(self)
+        self.size_y_box.setMinimum(1)
+        self.size_y_box.setValue(10)
+        self.size_x_box = QtGui.QSpinBox(self)
+        self.size_x_box.setMinimum(1)
+        self.size_x_box.setValue(10)
 
         # start/goal boxes
-        start_y_box = QtGui.QSpinBox(self)
-        start_x_box = QtGui.QSpinBox(self)
-        goal_y_box = QtGui.QSpinBox(self)
-        goal_x_box = QtGui.QSpinBox(self)
+        self.start_y_box = QtGui.QSpinBox(self)
+	self.start_y_box.setMinimum(1)
+	self.start_y_box.setValue(2)
+        self.start_x_box = QtGui.QSpinBox(self)
+	self.start_x_box.setMinimum(1)
+	self.start_x_box.setValue(2)
+        self.goal_y_box = QtGui.QSpinBox(self)
+	self.goal_y_box.setMinimum(1)
+	self.goal_y_box.setValue(8)
+        self.goal_x_box = QtGui.QSpinBox(self)
+	self.goal_x_box.setMinimum(1)
+	self.goal_x_box.setValue(8)
 
         # main box layout
         vbox = QtGui.QVBoxLayout()
         vbox.setAlignment(Qt.AlignTop|Qt.AlignLeft)
 
-        temp_widget = QCheckBox("Randomize World")
-        temp_widget.setCheckState(Qt.Checked)
-        vbox.addWidget(temp_widget)
+        self.randomize = QCheckBox("Randomize World")
+        self.randomize.setCheckState(Qt.Checked)
+        vbox.addWidget(self.randomize)
         vbox.addWidget(QCheckBox("Traversable Obstacles"))
         
         vbox.addWidget(QLabel("World Size"))
         hbox_world_size = QtGui.QHBoxLayout()
         hbox_world_size.addWidget(QLabel("Y"))
-        hbox_world_size.addWidget(size_y_box)
+        hbox_world_size.addWidget(self.size_y_box)
         hbox_world_size.addWidget(QLabel("X"))
-        hbox_world_size.addWidget(size_x_box)
+        hbox_world_size.addWidget(self.size_x_box)
         world_size_widget = QWidget()
         world_size_widget.setLayout(hbox_world_size)
         vbox.addWidget(world_size_widget)
@@ -204,9 +215,9 @@ class World2dSettingsDock(QDockWidget):
         vbox.addWidget(QLabel("Start"))
         hbox_start = QtGui.QHBoxLayout()
         hbox_start.addWidget(QLabel("Y"))
-        hbox_start.addWidget(start_y_box)
+        hbox_start.addWidget(self.start_y_box)
         hbox_start.addWidget(QLabel("X"))
-        hbox_start.addWidget(start_x_box)
+        hbox_start.addWidget(self.start_x_box)
         start_widget = QtGui.QWidget()
         start_widget.setLayout(hbox_start)
         vbox.addWidget(start_widget)
@@ -214,9 +225,9 @@ class World2dSettingsDock(QDockWidget):
         vbox.addWidget(QLabel("Goal"))
         hbox_goal = QtGui.QHBoxLayout()
         hbox_goal.addWidget(QLabel("Y"))
-        hbox_goal.addWidget(goal_y_box)
+        hbox_goal.addWidget(self.goal_y_box)
         hbox_goal.addWidget(QLabel("X"))
-        hbox_goal.addWidget(goal_x_box)
+        hbox_goal.addWidget(self.goal_x_box)
         goal_widget = QtGui.QWidget()
         goal_widget.setLayout(hbox_goal)
         vbox.addWidget(goal_widget)
@@ -234,24 +245,30 @@ class MainSettingsDock(QDockWidget):
 
     def __init__(self):
         QDockWidget.__init__(self)
+	base_path = os.path.dirname(__file__) + '/'
+
+	self.neighbours = False
+	self.algo = kapal.algo.Dijkstra
 
         # world chooser
         self.world_combo = QtGui.QComboBox()
         self.world_combo.addItems(MainSettingsDock.world_list)
-        self.world_combo.setItemIcon(0, QtGui.QIcon('icons/2d_4neigh.png'))
-        self.world_combo.setItemIcon(1, QtGui.QIcon('icons/2d_8neigh.png'))
+        self.world_combo.setItemIcon(0, QtGui.QIcon(base_path +  'icons/2d_4neigh.png'))
+        self.world_combo.setItemIcon(1, QtGui.QIcon(base_path + 'icons/2d_8neigh.png'))
+        self.connect(self.world_combo, SIGNAL('currentIndexChanged(int)'),
+	             self.update_neighbour)
 
         # algorithm chooser
         self.algo_combo = QtGui.QComboBox()
         self.algo_combo.addItems(MainSettingsDock.algo_list)
-        #self.connect(self.algo_combo, SIGNAL('currentIndexChanged(int)'),
-        #        self.update_algo)
+        self.connect(self.algo_combo, SIGNAL('currentIndexChanged(int)'),
+                self.update_algo)
 
         # heuristic chooser
         self.heuristic_combo = QtGui.QComboBox()
         self.heuristic_combo.addItems(MainSettingsDock.heuristic_list)
-        self.heuristic_combo.setItemIcon(0, QtGui.QIcon('icons/heur_manhattan.png'))
-        self.heuristic_combo.setItemIcon(1, QtGui.QIcon('icons/heur_euclidean.png'))
+        self.heuristic_combo.setItemIcon(0, QtGui.QIcon(base_path + 'icons/heur_manhattan.png'))
+        self.heuristic_combo.setItemIcon(1, QtGui.QIcon(base_path + 'icons/heur_euclidean.png'))
 
         # algo settings
         vbox = QtGui.QVBoxLayout()
@@ -266,20 +283,26 @@ class MainSettingsDock(QDockWidget):
         widget = QtGui.QWidget()
         widget.setLayout(vbox)
         self.setWidget(widget)
+
+
+    def update_neighbour(self, index):
+        self.neighbours = True if index == 1 else False
         
+
+    def update_algo(self, index):
+        print "algo updated to", index
+	self.algo = kapal.algo.AStar if index == 1 else kapal.algo.Dijkstra
+
 class SeashipMainWindow(QMainWindow):
-    world_list = ["2D 4 Neighbors", "2D 8 Neighbors"]
-    algo_list = ["Dijkstra", "A*"]
-    heuristic_list = ["Manhattan", "Euclidean"]
     
     def __init__(self, parent=None):
         QtGui.QMainWindow.__init__(self, parent)
+	base_path = os.path.dirname(__file__) + '/'
 
         # set up planner
         self.algo_t = kapal.algo.Dijkstra
         self.world_t = kapal.world.World2d
         self.state_t = kapal.state.State2dAStar
-        self.random_world(width=10)
 
         # general GUI settings
         self.setUnifiedTitleAndToolBarOnMac(True)
@@ -301,7 +324,7 @@ class SeashipMainWindow(QMainWindow):
 
         # built tool bar
         # start button
-        start_button = QtGui.QAction(QtGui.QIcon('icons/play.png'),
+        start_button = QtGui.QAction(QtGui.QIcon(base_path + 'icons/play.png'),
                 'Start', self)
         start_button.setShortcut('Ctrl+R')
         start_button.setStatusTip('Start Planning')
@@ -309,64 +332,65 @@ class SeashipMainWindow(QMainWindow):
                 self.plan)
 
         # stop button
-        stop_button = QtGui.QAction(QtGui.QIcon('icons/stop.png'),
-                'Start', self)
+        stop_button = QtGui.QAction(QtGui.QIcon(base_path + 'icons/stop.png'),
+                'Stop', self)
         stop_button.setShortcut('Ctrl+T')
         stop_button.setStatusTip('Stop')
         self.connect(stop_button, QtCore.SIGNAL('triggered()'),
                 self.reset_world)
 
         # reset button
-        reset_button = QtGui.QAction(QtGui.QIcon('icons/reset.png'),
+        reset_button = QtGui.QAction(QtGui.QIcon(base_path + 'icons/reset.png'),
                 'Random', self)
         reset_button.setShortcut('Ctrl+N')
         reset_button.setStatusTip('Randomize World')
         self.connect(reset_button, QtCore.SIGNAL('triggered()'),
-                self.random_world)
+                self.random_world_wid)
 
         toolbar = self.addToolBar('Control')
         toolbar.addAction(reset_button)
         toolbar.addAction(start_button)
         toolbar.addAction(stop_button)
+        self.random_world(breath=10, width=10)
 
         # status bar
         self.statusBar()
 
-    def update_algo(self):
-        print "algo updated to", self.algo_combo.currentIndex()
-        if self.algo_combo.currentIndex() == 0:
-            self.algo_t = kapal.algo.Dijkstra
-        if self.algo_combo.currentIndex() == 1:
-            self.algo_t = kapal.algo.AStar
-        self.reset_world()
 
-    def random_world(self, width=10):
+    def random_world_wid(self):
+        breath = self.world_settings.size_y_box.value()
+	width = self.world_settings.size_x_box.value()
+	self.random_world(breath, width)
+
+    def random_world(self, breath=10, width=10):
         # set up world
 
         # World2d
-        self.c = kapal.tools.rand_cost_map(width, width, 1, kapal.inf,
+        self.c = kapal.tools.rand_cost_map(breath, width, 1, kapal.inf,
                 flip=True, flip_chance=.1)
         self.world_cond = [ [0]*len(self.c[0]) for i in range(len(self.c)) ]
-        self.world = kapal.world.World2d(self.c, state_type = kapal.state.State2dAStar)
+        self.world = kapal.world.World2d(self.c, state_type = kapal.state.State2dAStar, diags=self.main_settings.neighbours)
 
     def reset_world(self):
         self.world_cond = [ [0]*len(self.c[0]) for i in range(len(self.c)) ]
         self.world.reset()
 
     def plan(self):
+        self.algo_t = self.main_settings.algo
         if (self.algo_t is kapal.algo.Dijkstra or
                 self.algo_t is kapal.algo.AStar):
-            start_y = 2
-            start_x = 2
-            goal_y = 8
-            goal_x = 8
+            start_y = self.world_settings.start_y_box.value()
+            start_x = self.world_settings.start_x_box.value()
+            goal_y = self.world_settings.goal_y_box.value()
+            goal_x = self.world_settings.goal_x_box.value()
             self.world_cond[start_y][start_x] |= WorldCanvas.STATE_START
             self.world_cond[goal_y][goal_x] |= WorldCanvas.STATE_GOAL
             astar = self.algo_t(self.world, self.world.state(start_y,start_x),
                     self.world.state(goal_y, goal_x))
             #astar.h = fake_h
             num_popped = 0
-            for s in astar.plan_gen():
+            #for s in astar.plan_gen():
+            for s in astar.plan():
                 self.world_cond[s.y][s.x] |= WorldCanvas.STATE_EXPANDED
                 num_popped += 1
             print num_popped
